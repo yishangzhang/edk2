@@ -87,7 +87,7 @@
 !include OvmfPkg/Include/Dsc/OvmfPkg.dsc.inc
 
 [BuildOptions]
-  GCC:RELEASE_*_*_CC_FLAGS             = -DMDEPKG_NDEBUG
+  GCC:RELEASE_*_*_CC_FLAGS             = -O0 -DMDEPKG_NDEBUG
   INTEL:RELEASE_*_*_CC_FLAGS           = /D MDEPKG_NDEBUG
   MSFT:RELEASE_*_*_CC_FLAGS            = /D MDEPKG_NDEBUG
 !if $(TOOL_CHAIN_TAG) != "XCODE5" && $(TOOL_CHAIN_TAG) != "CLANGPDB"
@@ -884,6 +884,7 @@
   OvmfPkg/VirtioBlkDxe/VirtioBlk.inf
   OvmfPkg/VirtioScsiDxe/VirtioScsi.inf
   OvmfPkg/VirtioRngDxe/VirtioRng.inf
+  OvmfPkg/VirtioTpmDxe/VirtioTpm.inf
   OvmfPkg/VirtioSerialDxe/VirtioSerial.inf
 !if $(PVSCSI_ENABLE) == TRUE
   OvmfPkg/PvScsiDxe/PvScsiDxe.inf
