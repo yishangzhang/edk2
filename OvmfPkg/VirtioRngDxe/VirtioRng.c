@@ -304,7 +304,7 @@ VirtioRngInit (
   if (EFI_ERROR (Status)) {
     goto Failed;
   }
-
+DEBUG((DEBUG_WARN, "VIRTIOTRNG rng init  step 5! queuesize is : %d \n",QueueSize));
   //
   // VirtioRngGetRNG() uses one descriptor
   //
@@ -519,6 +519,8 @@ VirtioRngDriverBindingStart (
   IN EFI_DEVICE_PATH_PROTOCOL     *RemainingDevicePath
   )
 {
+
+  DEBUG ((DEBUG_WARN, "rng driver binding support \n"));
   VIRTIO_RNG_DEV  *Dev;
   EFI_STATUS      Status;
 
@@ -572,6 +574,24 @@ VirtioRngDriverBindingStart (
   if (EFI_ERROR (Status)) {
     goto CloseExitBoot;
   }
+
+  UINT32 random;
+
+  Dev->Rng.GetRNG(&(Dev->Rng),NULL,sizeof (UINT64),(UINT8 *)&random);
+  DEBUG((DEBUG_WARN,"random is %08x \n",random));
+    Dev->Rng.GetRNG(&(Dev->Rng),NULL,sizeof (UINT64),(UINT8 *)&random);
+  DEBUG((DEBUG_WARN,"random is %08x \n",random));
+    Dev->Rng.GetRNG(&(Dev->Rng),NULL,sizeof (UINT64),(UINT8 *)&random);
+  DEBUG((DEBUG_WARN,"random is %08x \n",random));
+    Dev->Rng.GetRNG(&(Dev->Rng),NULL,sizeof (UINT64),(UINT8 *)&random);
+  DEBUG((DEBUG_WARN,"random is %08x \n",random));
+    Dev->Rng.GetRNG(&(Dev->Rng),NULL,sizeof (UINT64),(UINT8 *)&random);
+  DEBUG((DEBUG_WARN,"random is %08x \n",random));
+    Dev->Rng.GetRNG(&(Dev->Rng),NULL,sizeof (UINT64),(UINT8 *)&random);
+  DEBUG((DEBUG_WARN,"random is %08x \n",random));
+    Dev->Rng.GetRNG(&(Dev->Rng),NULL,sizeof (UINT64),(UINT8 *)&random);
+  DEBUG((DEBUG_WARN,"random is %08x \n",random));
+
 
   return EFI_SUCCESS;
 

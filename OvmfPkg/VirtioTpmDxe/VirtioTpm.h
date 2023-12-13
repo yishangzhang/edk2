@@ -12,7 +12,8 @@
 #include <Protocol/ComponentName.h>
 #include <Protocol/DriverBinding.h>
 #include <Protocol/VirtioDevice.h>
-
+//#include <Protocol/Rng.h>
+#include <Protocol/Tcg2Protocol.h>
 
 #include <IndustryStandard/Virtio.h>
 
@@ -20,15 +21,16 @@
 #define VIRTIO_TPM_SIG SIGNATURE_32 ('V', 'T', 'P', 'M')
 
 typedef struct {
- UINT32                  Signature;
- VIRTIO_DEVICE_PROTOCOL   *VirtIo;
+ UINT32                   Signature;
+ EFI_TCG2_PROTOCOL        Tcg;
  EFI_EVENT                ExitBoot;
- VRING                   Ring;
- //EFI_TPM_PROTOCOL         Tpm;
+ VRING                    Ring;
+ VIRTIO_DEVICE_PROTOCOL   *VirtIo;
+ VOID                     *RingMap;
 } VIRTIO_TPM_DEV;
 
 
-#define VIRTIO_ENTROPY_SOURCE_FROM_TPM(TpmPointer) \
-         CR (TpmPointer, VIRTIO_TPM_DEV, Tpm, VIRTIO_TPM_SIG)
+ #define VIRTIO_TPM_FROM_TCG(TpmPointer) \
+          CR (TpmPointer, VIRTIO_TPM_DEV, Tcg, VIRTIO_TPM_SIG)
 
 #endif
