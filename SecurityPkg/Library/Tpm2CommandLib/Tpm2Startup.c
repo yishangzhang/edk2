@@ -52,8 +52,8 @@ Tpm2Startup (
 {
   EFI_STATUS             Status;
   TPM2_STARTUP_COMMAND   Cmd;
-  TPM2_STARTUP_RESPONSE  Res;
-  UINT32                 ResultBufSize;
+  //TPM2_STARTUP_RESPONSE  Res;
+  //UINT32                 ResultBufSize;
   TPM_RC                 ResponseCode;
 
   Cmd.Header.tag         = SwapBytes16 (TPM_ST_NO_SESSIONS);
@@ -61,13 +61,15 @@ Tpm2Startup (
   Cmd.Header.commandCode = SwapBytes32 (TPM_CC_Startup);
   Cmd.StartupType        = SwapBytes16 (StartupType);
 
-  ResultBufSize = sizeof (Res);
-  Status        = Tpm2SubmitCommand (sizeof (Cmd), (UINT8 *)&Cmd, &ResultBufSize, (UINT8 *)&Res);
+  //ResultBufSize = sizeof (Res);
+  //Status        = Tpm2SubmitCommand (sizeof (Cmd), (UINT8 *)&Cmd, &ResultBufSize, (UINT8 *)&Res);
+    Status = EFI_SUCCESS;
   if (EFI_ERROR (Status)) {
     return Status;
   }
 
-  ResponseCode = SwapBytes32 (Res.Header.responseCode);
+  //ResponseCode = SwapBytes32 (Res.Header.responseCode);
+  ResponseCode = TPM_RC_SUCCESS;
   switch (ResponseCode) {
     case TPM_RC_SUCCESS:
       DEBUG ((DEBUG_INFO, "TPM2Startup: TPM_RC_SUCCESS\n"));

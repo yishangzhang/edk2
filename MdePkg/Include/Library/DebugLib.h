@@ -46,7 +46,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define DEBUG_EVENT     0x00080000       // Event messages
 #define DEBUG_GCD       0x00100000       // Global Coherency Database changes
 #define DEBUG_CACHE     0x00200000       // Memory range cachability changes
-#define DEBUG_VERBOSE   0x00400000       // Detailed debug messages that may
+#define DEBUG_VERBOSE   0x00000040       // Detailed debug messages that may
                                          // significantly impact boot performance
 #define DEBUG_MANAGEABILITY  0x00800000  // Detailed debug and payload message of manageability
                                          // related modules, such Redfish, IPMI, MCTP and etc.

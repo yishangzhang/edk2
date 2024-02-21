@@ -820,6 +820,15 @@ DxeTpm2MeasureBootHandler (
     goto Finish;
   }
 
+  DEBUG (
+    (
+     DEBUG_INFO,
+     "DxeTpm2MeasureBootHandler - add  ApplicationRequired:  %d   and ImageContext.ImageType : %d\n",
+     ApplicationRequired,
+     ImageContext.ImageType
+    )
+    );
+
   //
   // Measure only application if Application flag is set
   // Measure drivers and applications if Application flag is not set
@@ -843,6 +852,12 @@ DxeTpm2MeasureBootHandler (
     }
 
     DEBUG_CODE_END ();
+    DEBUG (
+    (
+     DEBUG_INFO,
+     "DxeTpm2MeasureBootHandler - add pe image to be measureed:\n"
+    )
+    );
 
     //
     // Measure PE image into TPM log.

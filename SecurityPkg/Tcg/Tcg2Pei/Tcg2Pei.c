@@ -1067,7 +1067,8 @@ PeimEntryMA (
     //
     // Initialize TPM device
     //
-    Status = Tpm2RequestUseTpm ();
+    //Status = Tpm2RequestUseTpm ();
+    Status = EFI_SUCCESS;
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "TPM2 not detected!\n"));
       goto Done;

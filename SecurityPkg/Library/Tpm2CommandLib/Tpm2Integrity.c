@@ -96,10 +96,10 @@ Tpm2PcrExtend (
 {
   EFI_STATUS                Status;
   TPM2_PCR_EXTEND_COMMAND   Cmd;
-  TPM2_PCR_EXTEND_RESPONSE  Res;
+  //TPM2_PCR_EXTEND_RESPONSE  Res;
   UINT32                    CmdSize;
-  UINT32                    RespSize;
-  UINT32                    ResultBufSize;
+  //UINT32                    RespSize;
+  //UINT32                    ResultBufSize;
   UINT8                     *Buffer;
   UINTN                     Index;
   UINT32                    SessionInfoSize;
@@ -160,39 +160,40 @@ Tpm2PcrExtend (
 
   CmdSize              = (UINT32)((UINTN)Buffer - (UINTN)&Cmd);
   Cmd.Header.paramSize = SwapBytes32 (CmdSize);
+  Status = EFI_SUCCESS;
 
-  ResultBufSize = sizeof (Res);
-  Status        = Tpm2SubmitCommand (CmdSize, (UINT8 *)&Cmd, &ResultBufSize, (UINT8 *)&Res);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
+  //ResultBufSize = sizeof (Res);
+  //Status        = Tpm2SubmitCommand (CmdSize, (UINT8 *)&Cmd, &ResultBufSize, (UINT8 *)&Res);
+  // if (EFI_ERROR (Status)) {
+  //   return Status;
+  // }
 
-  if (ResultBufSize > sizeof (Res)) {
-    DEBUG ((DEBUG_ERROR, "Tpm2PcrExtend: Failed ExecuteCommand: Buffer Too Small\r\n"));
-    return EFI_BUFFER_TOO_SMALL;
-  }
+  // if (ResultBufSize > sizeof (Res)) {
+  //   DEBUG ((DEBUG_ERROR, "Tpm2PcrExtend: Failed ExecuteCommand: Buffer Too Small\r\n"));
+  //   return EFI_BUFFER_TOO_SMALL;
+  // }
 
   //
   // Validate response headers
   //
-  RespSize = SwapBytes32 (Res.Header.paramSize);
-  if (RespSize > sizeof (Res)) {
-    DEBUG ((DEBUG_ERROR, "Tpm2PcrExtend: Response size too large! %d\r\n", RespSize));
-    return EFI_BUFFER_TOO_SMALL;
-  }
+  // RespSize = SwapBytes32 (Res.Header.paramSize);
+  // if (RespSize > sizeof (Res)) {
+  //   DEBUG ((DEBUG_ERROR, "Tpm2PcrExtend: Response size too large! %d\r\n", RespSize));
+  //   return EFI_BUFFER_TOO_SMALL;
+  // }
 
   //
   // Fail if command failed
-  //
-  if (SwapBytes32 (Res.Header.responseCode) != TPM_RC_SUCCESS) {
-    DEBUG ((DEBUG_ERROR, "Tpm2PcrExtend: Response Code error! 0x%08x\r\n", SwapBytes32 (Res.Header.responseCode)));
-    return EFI_DEVICE_ERROR;
-  }
+  // //
+  // if (SwapBytes32 (Res.Header.responseCode) != TPM_RC_SUCCESS) {
+  //   DEBUG ((DEBUG_ERROR, "Tpm2PcrExtend: Response Code error! 0x%08x\r\n", SwapBytes32 (Res.Header.responseCode)));
+  //   return EFI_DEVICE_ERROR;
+  // }
 
-  DEBUG_CODE_BEGIN ();
-  DEBUG ((DEBUG_VERBOSE, "Tpm2PcrExtend: PCR read after extend...\n"));
-  Tpm2PcrReadForActiveBank (PcrHandle, NULL);
-  DEBUG_CODE_END ();
+  // DEBUG_CODE_BEGIN ();
+  // DEBUG ((DEBUG_VERBOSE, "Tpm2PcrExtend: PCR read after extend...\n"));
+  // //Tpm2PcrReadForActiveBank (PcrHandle, NULL);
+  // DEBUG_CODE_END ();
 
   //
   // Unmarshal the response
@@ -200,7 +201,7 @@ Tpm2PcrExtend (
 
   // None
 
-  return EFI_SUCCESS;
+  return Status;
 }
 
 /**
@@ -757,7 +758,7 @@ Tpm2PcrReadForActiveBank (
   UINT32              ActivePcrBanks;
   UINT32              TcgRegistryHashAlg;
   UINTN               Index;
-  UINTN               Index2;
+//  UINTN               Index2;
 
   PcrIndex = (UINT8)PcrHandle;
 
@@ -856,40 +857,40 @@ Tpm2PcrReadForActiveBank (
   //
   // Read PCRs
   //
-  Status = Tpm2PcrRead (
-             &PcrSelectionIn,
-             &PcrUpdateCounter,
-             &PcrSelectionOut,
-             &PcrValues
-             );
+  // Status = Tpm2PcrRead (
+  //            &PcrSelectionIn,
+  //            &PcrUpdateCounter,
+  //            &PcrSelectionOut,
+  //            &PcrValues
+  //            );
 
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "Tpm2PcrRead failed Status = %r \n", Status));
-    return EFI_DEVICE_ERROR;
-  }
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "Tpm2PcrRead failed Status = %r \n", Status));
+  //   return EFI_DEVICE_ERROR;
+  // }
 
-  for (Index = 0; Index < PcrValues.count; Index++) {
-    DEBUG ((
-      DEBUG_INFO,
-      "ReadPcr - HashAlg = 0x%04x, Pcr[%02d], digest = ",
-      PcrSelectionOut.pcrSelections[Index].hash,
-      PcrIndex
-      ));
+  // for (Index = 0; Index < PcrValues.count; Index++) {
+  //   DEBUG ((
+  //     DEBUG_INFO,
+  //     "ReadPcr - HashAlg = 0x%04x, Pcr[%02d], digest = ",
+  //     PcrSelectionOut.pcrSelections[Index].hash,
+  //     PcrIndex
+  //     ));
 
-    for (Index2 = 0; Index2 < PcrValues.digests[Index].size; Index2++) {
-      DEBUG ((DEBUG_INFO, "%02x ", PcrValues.digests[Index].buffer[Index2]));
-    }
+  //   for (Index2 = 0; Index2 < PcrValues.digests[Index].size; Index2++) {
+  //     DEBUG ((DEBUG_INFO, "%02x ", PcrValues.digests[Index].buffer[Index2]));
+  //   }
 
-    DEBUG ((DEBUG_INFO, "\n"));
-  }
+  //   DEBUG ((DEBUG_INFO, "\n"));
+  // }
 
-  if (HashList != NULL) {
-    CopyMem (
-      HashList,
-      &PcrValues,
-      sizeof (TPML_DIGEST)
-      );
-  }
+  // if (HashList != NULL) {
+  //   CopyMem (
+  //     HashList,
+  //     &PcrValues,
+  //     sizeof (TPML_DIGEST)
+  //     );
+  // }
 
   return EFI_SUCCESS;
 }

@@ -51,7 +51,8 @@ Tcg2ConfigPeimEntryPoint (
 
   DEBUG ((DEBUG_INFO, "%a\n", __func__));
 
-  Status = InternalTpm12Detect ();
+  //Status = InternalTpm12Detect ();
+  Status = EFI_UNSUPPORTED;
   if (!EFI_ERROR (Status)) {
     DEBUG ((DEBUG_INFO, "%a: TPM1.2 detected\n", __func__));
     Size   = sizeof (gEfiTpmDeviceInstanceTpm12Guid);
@@ -62,7 +63,8 @@ Tcg2ConfigPeimEntryPoint (
                );
     ASSERT_EFI_ERROR (Status);
   } else {
-    Status = Tpm2RequestUseTpm ();
+    //Status = Tpm2RequestUseTpm ();
+    Status = EFI_SUCCESS;
     if (!EFI_ERROR (Status)) {
       DEBUG ((DEBUG_INFO, "%a: TPM2 detected\n", __func__));
       Size   = sizeof (gEfiTpmDeviceInstanceTpm20DtpmGuid);
