@@ -658,14 +658,20 @@ DumpEventLog (
       //
       EventHdr = (TCG_PCR_EVENT_HDR *)(UINTN)EventLogLocation;
       DumpEvent (EventHdr);
+      
+      DEBUG ((DEBUG_INFO, "DumpEvent: first event end ===== \n"));
 
       TcgEfiSpecIdEventStruct = (TCG_EfiSpecIDEventStruct *)(EventHdr + 1);
       DumpTcgEfiSpecIdEventStruct (TcgEfiSpecIdEventStruct);
+    
+       DEBUG ((DEBUG_INFO, "DumpEvent: DumpTcgEfiSpecIdEventStruct end ==== \n"));
+
 
       TcgPcrEvent2 = (TCG_PCR_EVENT2 *)((UINTN)TcgEfiSpecIdEventStruct + GetTcgEfiSpecIdEventStructSize (TcgEfiSpecIdEventStruct));
       while ((UINTN)TcgPcrEvent2 <= EventLogLastEntry) {
         DumpEvent2 (TcgPcrEvent2);
         TcgPcrEvent2 = (TCG_PCR_EVENT2 *)((UINTN)TcgPcrEvent2 + GetPcrEvent2Size (TcgPcrEvent2));
+        DEBUG ((DEBUG_INFO, "DumpEvent:  event end ===== \n"));
       }
 
       if (FinalEventsTable == NULL) {

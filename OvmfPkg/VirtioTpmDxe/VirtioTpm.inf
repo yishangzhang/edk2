@@ -22,6 +22,8 @@
 [Packages]
   MdePkg/MdePkg.dec
   OvmfPkg/OvmfPkg.dec
+  SecurityPkg/SecurityPkg.dec
+  CryptoPkg/CryptoPkg.dec
 
 [LibraryClasses]
   BaseMemoryLib
@@ -38,3 +40,9 @@
 
 [Guids]
   gEfiRngAlgorithmRaw
+  gTcgEvent2EntryHobGuid                             ## SOMETIMES_CONSUMES  ## HOB
+  gTcgEventEntryHobGuid                              ## SOMETIMES_CONSUMES  ## HOB
+
+
+[Protocols]
+  gEfiTcg2ProtocolGuid                  ## SOMETIMES_CONSUMES

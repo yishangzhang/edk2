@@ -15,6 +15,334 @@
 #include "VirtioTpm.h"
 
 
+
+
+
+
+// #define  TCG2_DEFAULT_MAX_COMMAND_SIZE   0x1000
+// #define  TCG2_DEFAULT_MAX_RESPONSE_SIZE  0x1000
+// #define TCG_EVENT_LOG_AREA_COUNT_MAX  2
+
+// typedef struct {
+//   EFI_TCG2_EVENT_LOG_FORMAT    EventLogFormat;
+//   EFI_PHYSICAL_ADDRESS         Lasa;
+//   UINT64                       Laml;
+//   UINTN                        EventLogSize;
+//   UINT8                        *LastEvent;
+//   BOOLEAN                      EventLogStarted;
+//   BOOLEAN                      EventLogTruncated;
+//   UINTN                        Next800155EventOffset;
+// } TCG_EVENT_LOG_AREA_STRUCT;
+
+// typedef struct _TCG_DXE_DATA {
+//   EFI_TCG2_BOOT_SERVICE_CAPABILITY    BsCap;
+//   TCG_EVENT_LOG_AREA_STRUCT           EventLogAreaStruct[TCG_EVENT_LOG_AREA_COUNT_MAX];
+//   BOOLEAN                             GetEventLogCalled[TCG_EVENT_LOG_AREA_COUNT_MAX];
+//   TCG_EVENT_LOG_AREA_STRUCT           FinalEventLogAreaStruct[TCG_EVENT_LOG_AREA_COUNT_MAX];
+//   EFI_TCG2_FINAL_EVENTS_TABLE         *FinalEventsTable[TCG_EVENT_LOG_AREA_COUNT_MAX];
+// } TCG_DXE_DATA;
+// TCG_DXE_DATA  mTcgDxeData = {
+//   {
+//     sizeof (EFI_TCG2_BOOT_SERVICE_CAPABILITY), // Size
+//     { 1, 1 },                                  // StructureVersion
+//     { 1, 1 },                                  // ProtocolVersion
+//     EFI_TCG2_BOOT_HASH_ALG_SHA1,               // HashAlgorithmBitmap
+//     EFI_TCG2_EVENT_LOG_FORMAT_TCG_1_2,         // SupportedEventLogs
+//     TRUE,                                      // TPMPresentFlag
+//     TCG2_DEFAULT_MAX_COMMAND_SIZE,             // MaxCommandSize
+//     TCG2_DEFAULT_MAX_RESPONSE_SIZE,            // MaxResponseSize
+//     0,                                         // ManufacturerID
+//     0,                                         // NumberOfPCRBanks
+//     0,                                         // ActivePcrBanks
+//   },
+// };
+
+// typedef struct {
+//   EFI_GUID                     *EventGuid;
+//   EFI_TCG2_EVENT_LOG_FORMAT    LogFormat;
+// } TCG2_EVENT_INFO_STRUCT;
+
+// TCG2_EVENT_INFO_STRUCT  mTcg2EventInfo[] = {
+//   { &gTcgEventEntryHobGuid,  EFI_TCG2_EVENT_LOG_FORMAT_TCG_1_2 },
+//   { &gTcgEvent2EntryHobGuid, EFI_TCG2_EVENT_LOG_FORMAT_TCG_2   },
+// };
+
+typedef struct {
+  TPMI_ALG_HASH    HashAlgo;
+  UINT16           HashSize;
+  UINT32           HashMask;
+} INTERNAL_HASH_INFO;
+STATIC INTERNAL_HASH_INFO  mHashInfo[] = {
+  { TPM_ALG_SHA1,    SHA1_DIGEST_SIZE,    HASH_ALG_SHA1    },
+  { TPM_ALG_SHA256,  SHA256_DIGEST_SIZE,  HASH_ALG_SHA256  },
+  { TPM_ALG_SM3_256, SM3_256_DIGEST_SIZE, HASH_ALG_SM3_256 },
+  { TPM_ALG_SHA384,  SHA384_DIGEST_SIZE,  HASH_ALG_SHA384  },
+  { TPM_ALG_SHA512,  SHA512_DIGEST_SIZE,  HASH_ALG_SHA512  },
+};
+
+/**
+  This function dump PCR event.
+
+  @param[in]  EventHdr     TCG PCR event structure.
+**/
+VOID
+DumpEvent (
+  IN TCG_PCR_EVENT_HDR  *EventHdr
+  )
+{
+  UINTN  Index;
+
+  DEBUG ((DEBUG_INFO, "  Event:\n"));
+  DEBUG ((DEBUG_INFO, "    PCRIndex  - %d\n", EventHdr->PCRIndex));
+  DEBUG ((DEBUG_INFO, "    EventType - 0x%08x\n", EventHdr->EventType));
+  DEBUG ((DEBUG_INFO, "    Digest    - "));
+  for (Index = 0; Index < sizeof (TCG_DIGEST); Index++) {
+    DEBUG ((DEBUG_INFO, "%02x ", EventHdr->Digest.digest[Index]));
+  }
+
+  DEBUG ((DEBUG_INFO, "\n"));
+  DEBUG ((DEBUG_INFO, "    EventSize - 0x%08x\n", EventHdr->EventSize));
+  //InternalDumpHex ((UINT8 *)(EventHdr + 1), EventHdr->EventSize);
+}
+
+UINT16
+EFIAPI
+GetHashSizeFromAlgo (
+  IN TPMI_ALG_HASH  HashAlgo
+  )
+{
+  UINTN  Index;
+
+  for (Index = 0; Index < sizeof (mHashInfo)/sizeof (mHashInfo[0]); Index++) {
+    if (mHashInfo[Index].HashAlgo == HashAlgo) {
+      return mHashInfo[Index].HashSize;
+    }
+  }
+
+  return 0;
+}
+
+/**
+  This function dump PCR event 2.
+
+  @param[in]  TcgPcrEvent2     TCG PCR event 2 structure.
+**/
+VOID
+DumpEvent2 (
+  IN TCG_PCR_EVENT2  *TcgPcrEvent2
+  )
+{
+  UINTN          Index;
+  UINT32         DigestIndex;
+  UINT32         DigestCount;
+  TPMI_ALG_HASH  HashAlgo;
+  UINT32         DigestSize;
+  UINT8          *DigestBuffer;
+  UINT32         EventSize;
+  //UINT8          *EventBuffer;
+
+  DEBUG ((DEBUG_INFO, "  Event:\n"));
+  DEBUG ((DEBUG_INFO, "    PCRIndex  - %d\n", TcgPcrEvent2->PCRIndex));
+  DEBUG ((DEBUG_INFO, "    EventType - 0x%08x\n", TcgPcrEvent2->EventType));
+
+  DEBUG ((DEBUG_INFO, "    DigestCount: 0x%08x\n", TcgPcrEvent2->Digest.count));
+
+  DigestCount  = TcgPcrEvent2->Digest.count;
+  HashAlgo     = TcgPcrEvent2->Digest.digests[0].hashAlg;
+  DigestBuffer = (UINT8 *)&TcgPcrEvent2->Digest.digests[0].digest;
+  for (DigestIndex = 0; DigestIndex < DigestCount; DigestIndex++) {
+    DEBUG ((DEBUG_INFO, "      HashAlgo : 0x%04x\n", HashAlgo));
+    DEBUG ((DEBUG_INFO, "      Digest(%d): ", DigestIndex));
+    DigestSize = GetHashSizeFromAlgo (HashAlgo);
+    for (Index = 0; Index < DigestSize; Index++) {
+      DEBUG ((DEBUG_INFO, "%02x ", DigestBuffer[Index]));
+    }
+
+    DEBUG ((DEBUG_INFO, "\n"));
+    //
+    // Prepare next
+    //
+    CopyMem (&HashAlgo, DigestBuffer + DigestSize, sizeof (TPMI_ALG_HASH));
+    DigestBuffer = DigestBuffer + DigestSize + sizeof (TPMI_ALG_HASH);
+  }
+
+  DEBUG ((DEBUG_INFO, "\n"));
+  DigestBuffer = DigestBuffer - sizeof (TPMI_ALG_HASH);
+
+  CopyMem (&EventSize, DigestBuffer, sizeof (TcgPcrEvent2->EventSize));
+  DEBUG ((DEBUG_INFO, "    EventSize - 0x%08x\n", EventSize));
+  //EventBuffer = DigestBuffer + sizeof (TcgPcrEvent2->EventSize);
+  //InternalDumpHex (EventBuffer, EventSize);
+}
+
+
+/**
+  This function returns size of TCG PCR event 2.
+
+  @param[in]  TcgPcrEvent2     TCG PCR event 2 structure.
+
+  @return size of TCG PCR event 2.
+**/
+UINTN
+GetPcrEvent2Size (
+  IN TCG_PCR_EVENT2  *TcgPcrEvent2
+  )
+{
+  UINT32         DigestIndex;
+  UINT32         DigestCount;
+  TPMI_ALG_HASH  HashAlgo;
+  UINT32         DigestSize;
+  UINT8          *DigestBuffer;
+  UINT32         EventSize;
+  UINT8          *EventBuffer;
+
+  DigestCount  = TcgPcrEvent2->Digest.count;
+  HashAlgo     = TcgPcrEvent2->Digest.digests[0].hashAlg;
+  DigestBuffer = (UINT8 *)&TcgPcrEvent2->Digest.digests[0].digest;
+  for (DigestIndex = 0; DigestIndex < DigestCount; DigestIndex++) {
+    DigestSize = GetHashSizeFromAlgo (HashAlgo);
+    //
+    // Prepare next
+    //
+    CopyMem (&HashAlgo, DigestBuffer + DigestSize, sizeof (TPMI_ALG_HASH));
+    DigestBuffer = DigestBuffer + DigestSize + sizeof (TPMI_ALG_HASH);
+  }
+
+  DigestBuffer = DigestBuffer - sizeof (TPMI_ALG_HASH);
+
+  CopyMem (&EventSize, DigestBuffer, sizeof (TcgPcrEvent2->EventSize));
+  EventBuffer = DigestBuffer + sizeof (TcgPcrEvent2->EventSize);
+
+  return (UINTN)EventBuffer + EventSize - (UINTN)TcgPcrEvent2;
+}
+
+/**
+  This function get size of TCG_EfiSpecIDEventStruct.
+
+  @param[in]  TcgEfiSpecIdEventStruct     A pointer to TCG_EfiSpecIDEventStruct.
+**/
+UINTN
+GetTcgEfiSpecIdEventStructSize (
+  IN TCG_EfiSpecIDEventStruct  *TcgEfiSpecIdEventStruct
+  )
+{
+  TCG_EfiSpecIdEventAlgorithmSize  *DigestSize;
+  UINT8                            *VendorInfoSize;
+  UINT32                           NumberOfAlgorithms;
+
+  CopyMem (&NumberOfAlgorithms, TcgEfiSpecIdEventStruct + 1, sizeof (NumberOfAlgorithms));
+
+  DigestSize     = (TCG_EfiSpecIdEventAlgorithmSize *)((UINT8 *)TcgEfiSpecIdEventStruct + sizeof (*TcgEfiSpecIdEventStruct) + sizeof (NumberOfAlgorithms));
+  VendorInfoSize = (UINT8 *)&DigestSize[NumberOfAlgorithms];
+  return sizeof (TCG_EfiSpecIDEventStruct) + sizeof (UINT32) + (NumberOfAlgorithms * sizeof (TCG_EfiSpecIdEventAlgorithmSize)) + sizeof (UINT8) + (*VendorInfoSize);
+}
+
+/**
+  This function dump event log.
+
+  @param[in]  EventLogFormat     The type of the event log for which the information is requested.
+  @param[in]  EventLogLocation   A pointer to the memory address of the event log.
+  @param[in]  EventLogLastEntry  If the Event Log contains more than one entry, this is a pointer to the
+                                 address of the start of the last entry in the event log in memory.
+  @param[in]  FinalEventsTable   A pointer to the memory address of the final event table.
+**/
+VOID
+DumpEventLog (
+  IN EFI_TCG2_EVENT_LOG_FORMAT    EventLogFormat,
+  IN EFI_PHYSICAL_ADDRESS         EventLogLocation,
+  IN EFI_PHYSICAL_ADDRESS         EventLogLastEntry
+  )
+{
+  TCG_PCR_EVENT_HDR         *EventHdr;
+  TCG_PCR_EVENT2            *TcgPcrEvent2;
+  TCG_EfiSpecIDEventStruct  *TcgEfiSpecIdEventStruct;
+ // UINTN                     NumberOfEvents;
+
+  DEBUG ((DEBUG_INFO, "EventLogFormat: (0x%x)\n", EventLogFormat));
+
+  switch (EventLogFormat) {
+    case EFI_TCG2_EVENT_LOG_FORMAT_TCG_1_2:
+      EventHdr = (TCG_PCR_EVENT_HDR *)(UINTN)EventLogLocation;
+      while ((UINTN)EventHdr <= EventLogLastEntry) {
+        DumpEvent (EventHdr);
+        EventHdr = (TCG_PCR_EVENT_HDR *)((UINTN)EventHdr + sizeof (TCG_PCR_EVENT_HDR) + EventHdr->EventSize);
+      }
+      break;
+    case EFI_TCG2_EVENT_LOG_FORMAT_TCG_2:
+      //
+      // Dump first event
+      //
+      EventHdr = (TCG_PCR_EVENT_HDR *)(UINTN)EventLogLocation;
+      DumpEvent (EventHdr);
+      
+      DEBUG ((DEBUG_INFO, "DumpEvent: first event end ===== \n"));
+
+      TcgEfiSpecIdEventStruct = (TCG_EfiSpecIDEventStruct *)(EventHdr + 1);
+      //DumpTcgEfiSpecIdEventStruct (TcgEfiSpecIdEventStruct);
+    
+       DEBUG ((DEBUG_INFO, "DumpEvent: DumpTcgEfiSpecIdEventStruct end ==== \n"));
+
+
+      TcgPcrEvent2 = (TCG_PCR_EVENT2 *)((UINTN)TcgEfiSpecIdEventStruct + GetTcgEfiSpecIdEventStructSize (TcgEfiSpecIdEventStruct));
+      while ((UINTN)TcgPcrEvent2 <= EventLogLastEntry) {
+        DumpEvent2 (TcgPcrEvent2);
+        TcgPcrEvent2 = (TCG_PCR_EVENT2 *)((UINTN)TcgPcrEvent2 + GetPcrEvent2Size (TcgPcrEvent2));
+        DEBUG ((DEBUG_INFO, "DumpEvent:  event end ===== \n"));
+      }
+
+      break;
+  }
+
+  return;
+}
+
+
+STATIC
+EFI_STATUS
+EFIAPI
+GetEventLog(
+  IN EFI_TCG2_EVENT_LOG_FORMAT    EventLogFormat,
+  IN EFI_PHYSICAL_ADDRESS         *EventLogLocation,
+  IN EFI_PHYSICAL_ADDRESS         *EventLogLastEntry,
+  //IN EFI_TCG2_FINAL_EVENTS_TABLE  *FinalEventsTable,
+  OUT BOOLEAN                   *EventLogTruncated
+)
+{
+    EFI_STATUS     Status;
+    EFI_TCG2_PROTOCOL                 *Tcg2ProtocolCom; 
+    EFI_TCG2_BOOT_SERVICE_CAPABILITY  Tcg2ProtocolCapability;
+    Tcg2ProtocolCom = NULL;
+    Status       = gBS->LocateProtocol (&gEfiTcg2ProtocolGuid, NULL, (VOID **)&Tcg2ProtocolCom);
+
+    if (EFI_ERROR (Status)) {
+    //
+    // Tcg2 protocol is not installed. So, TPM2 is not present.
+    //
+    DEBUG ((DEBUG_VERBOSE, "Tcg2Protocol is not installed. - %r\n", Status));
+  } else {
+    Tcg2ProtocolCapability.Size = (UINT8)sizeof (Tcg2ProtocolCapability);
+    Status                      = Tcg2ProtocolCom->GetCapability (Tcg2ProtocolCom, &Tcg2ProtocolCapability);
+    if (EFI_ERROR (Status) || (!Tcg2ProtocolCapability.TPMPresentFlag)) {
+      //
+      // TPM device doesn't work or activate.
+      //
+      DEBUG ((DEBUG_ERROR, "TPMPresentFlag=FALSE %r\n", Status));
+      Tcg2ProtocolCom = NULL;
+    }
+  }
+
+
+  //get event log
+   EventLogFormat = EFI_TCG2_EVENT_LOG_FORMAT_TCG_2;
+   Status = Tcg2ProtocolCom->GetEventLog(Tcg2ProtocolCom,EventLogFormat,EventLogLocation,EventLogLastEntry,EventLogTruncated);
+   DumpEventLog(EventLogFormat,*EventLogLocation,*EventLogLastEntry);
+     
+
+  
+
+  return EFI_SUCCESS;
+}
+
 STATIC
 EFI_STATUS
 EFIAPI
@@ -749,14 +1077,24 @@ VirtioTpmDriverBindingStart(
   //TODO delete it
 
      DEBUG ((DEBUG_WARN, "tpm driver ready to send message  \n"));
-  VOID *INPAR;
-  VOID *OUTPAR;
-  UINT8 DataToCopy[] = {0x80, 0x01, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x01, 0x43, 0x00};
-  INPAR   =  AllocateZeroPool(sizeof(DataToCopy));
-  OUTPAR  = AllocateZeroPool(100* sizeof(DataToCopy));
-  CopyMem(INPAR, DataToCopy, sizeof(DataToCopy));
-  VirtioSubmitCommand(&VTpmDev->Tcg, (UINT32)sizeof(DataToCopy),(UINT8 *)INPAR   ,(UINT32)sizeof(DataToCopy) * 100, (UINT8 *)OUTPAR);
+  // VOID *INPAR;
+  // VOID *OUTPAR;
+  // UINT8 DataToCopy[] = {0x80, 0x01, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x01, 0x43, 0x00};
+  // INPAR   =  AllocateZeroPool(sizeof(DataToCopy));
+  // OUTPAR  = AllocateZeroPool(100* sizeof(DataToCopy));
+  // CopyMem(INPAR, DataToCopy, sizeof(DataToCopy));
+  // VirtioSubmitCommand(&VTpmDev->Tcg, (UINT32)sizeof(DataToCopy),(UINT8 *)INPAR   ,(UINT32)sizeof(DataToCopy) * 100, (UINT8 *)OUTPAR);
 
+   EFI_TCG2_EVENT_LOG_FORMAT    EventLogFormat;
+   EFI_PHYSICAL_ADDRESS         EventLogLocation;
+   EFI_PHYSICAL_ADDRESS         EventLogLastEntry;
+   //EFI_TCG2_FINAL_EVENTS_TABLE  FinalEventsTable;
+   BOOLEAN                   EventLogTruncated;
+   GetEventLog(EventLogFormat,&EventLogLocation,&EventLogLastEntry,&EventLogTruncated);
+
+
+
+ DEBUG ((DEBUG_WARN, "tpm driver ready to send message  ok !! \n"));
   return EFI_SUCCESS;
 
 CloseExitBoot:

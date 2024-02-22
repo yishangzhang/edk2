@@ -37,6 +37,8 @@ Tpm2SubmitCommand (
   IN UINT8       *OutputParameterBlock
   )
 {
+
+  DEBUG ((DEBUG_WARN, "Tpm2DeviceLibTcg2"));
   EFI_STATUS            Status;
   TPM2_RESPONSE_HEADER  *Header;
 
